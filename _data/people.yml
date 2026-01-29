@@ -485,3 +485,51 @@ chunche:
   name: Chun-Che Yang
   collab: true
   affiliation: NYCU
+yilong:
+  name: Yilong Zhao
+  collab: true
+  affiliation: UC Berkeley
+jiaming:
+  name: Jiaming Tang
+  collab: true
+  affiliation: MIT
+kan:
+  name: Kan Zhu
+  collab: true
+  affiliation: U Washington
+zihao:
+  name: Zihao Ye
+  collab: true
+  affiliation: Nvidia
+chaofan:
+  name: Chaofan Lin
+  collab: true
+  affiliation: Tsinghua
+jongseok:
+  name: Jongseok Park
+  collab: true
+  affiliation: UC Berkeley
+guanxuan:
+  name: Guangxuan Xiao
+  collab: true
+  affiliation: MIT
+mingyu:
+  name: Mingyu Gao
+  collab: true
+  affiliation: Tsinghua
+baris:
+  name: Baris Kasikci
+  collab: true
+  affiliation: U Washington
+song:
+  name: Song Han
+  collab: true
+  affiliation: MIT
+ion:
+  name: Ion Stoica
+  collab: true
+  affiliation: UC Berkeley
+yuchen:
+  name: Yu-chen Luis
+  collab: true
+  affiliation: NYCU

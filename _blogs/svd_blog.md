@@ -29,7 +29,7 @@ Large Language Models are increasingly deployed at long context lengths — hund
 
 **SVD-based compression** addresses this directly. KV-Cache matrices empirically exhibit rapid singular value decay: most information concentrates in a small number of dominant directions. Truncating to the top-$k$ singular components yields the best possible rank-$k$ approximation, guaranteed optimal by the Eckart-Young theorem.
 
-[//]: **xKV** pushes this further by noting that adjacent transformer layers share nearly identical dominant subspaces. A single shared SVD over a group of $G$ concatenated KV-Caches achieves up to 6.8× higher compression than per-layer methods.
+**xKV** pushes this further by noting that adjacent transformer layers share nearly identical dominant subspaces. A single shared SVD over a group of $G$ concatenated KV-Caches achieves up to 6.8× higher compression than per-layer methods.
 
 **xKV** [Chang et al., 2025] pushes this further by observing that the dominant singular vectors of KV-Caches are well-aligned *across* adjacent layers. Concatenating the KV-Caches of $G$ adjacent layers and applying one shared SVD extracts a common low-rank subspace for all layers jointly — achieving up to **6.8× higher compression** than prior inter-layer methods while improving accuracy.
 
@@ -428,7 +428,7 @@ def run_svd(A, k, method='ours', oversample=4, dtype=torch.bfloat16):
 
 ```bibtex
 @misc{abdelfattah2026svd_blog,
-      title={Faster Online Randomized SVD for LLM KV-Cache Compression},
+      title={Randomized SVD for LLM KV-Cache Compression},
       author={Zhihao Mo and Chi-Chih Chang and Mohamed Abdelfattah},
       year={2026},
       url={https://abdelfattah-lab.github.io/blog/svd_blog},

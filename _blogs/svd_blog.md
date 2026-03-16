@@ -41,7 +41,7 @@ The catch: unlike offline weight compression, xKV must compute SVD **online** du
 We address both.
 
 <figure>
-<img src="imgs/blog/svd_blog/Figure_1_SVD_Time_Proportion.png" alt="SVD Overhead" width="700"/>
+<img src="/imgs/blog/svd_blog/Figure_1_SVD_Time_Proportion.png" alt="SVD Overhead" width="700"/>
 <figcaption>Fig. 1 — SVD overhead as a share of total profiling time per sample. Our method reduces SVD's share from 13.0% to 3.6%, a level where it is no longer a dominant cost.</figcaption>
 </figure>
 
@@ -355,7 +355,7 @@ def run_svd(A, k, method='ours', oversample=4, dtype=torch.bfloat16):
 ## End-to-End SVD Latency
 
 <figure>
-<img src="imgs/blog/svd_blog/Figure_1_SVD_Time_Proportion.png" alt="SVD Overhead per Sample" width="700"/>
+<img src="/imgs/blog/svd_blog/Figure_1_SVD_Time_Proportion.png" alt="SVD Overhead per Sample" width="700"/>
 <figcaption>Fig. 1 — Per-sample CUDA time decomposed into SVD (dark) and other inference tasks (grey). Our method reduces SVD from 13.0% to 3.6% of total per-sample time.</figcaption>
 </figure>
 
@@ -374,7 +374,7 @@ def run_svd(A, k, method='ours', oversample=4, dtype=torch.bfloat16):
 ## Stage-Level Breakdown
 
 <figure>
-<img src="imgs/blog/svd_blog/Figure_3_CUDA_Time_by_Stage.png" alt="CUDA Time by Stage" width="700"/>
+<img src="/imgs/blog/svd_blog/Figure_3_CUDA_Time_by_Stage.png" alt="CUDA Time by Stage" width="700"/>
 <figcaption>Fig. 2 — Randomized SVD CUDA time by stage: torch.svd_lowrank vs. Ours (fp16 · Cholesky-QR). RTX A6000 · n_iter=4 · layer group size 4.</figcaption>
 </figure>
 
@@ -397,7 +397,7 @@ def run_svd(A, k, method='ours', oversample=4, dtype=torch.bfloat16):
 ## Accuracy vs. Speed Trade-off
 
 <figure>
-<img src="imgs/blog/svd_blog/Figure_2_SVD_Accuracy_Comparison_VT.png" alt="Accuracy Comparison" width="700"/>
+<img src="/imgs/blog/svd_blog/Figure_2_SVD_Accuracy_Comparison_VT.png" alt="Accuracy Comparison" width="700"/>
 <figcaption>Fig. 3 — Average accuracy over four RULER subtasks (FWE · NIAH MultiKey · NIAH Single1 · VT). RTX A6000 · n_iter=4 · G=4 · oversampling p=4.</figcaption>
 </figure>
 

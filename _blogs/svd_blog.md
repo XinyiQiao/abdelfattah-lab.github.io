@@ -35,13 +35,6 @@ Large Language Models are increasingly deployed at long context lengths — hund
 
 The catch: unlike offline weight compression, xKV must compute SVD **online** during the prefill phase of every request, since the KV-Cache is input-dependent. This online SVD step becomes a significant and growing fraction of prefill latency. Even the standard approximate `torch.svd_lowrank` (Halko et al. [2011]) accounts for **13.0%** of total per-sample profiling time — a measurable throughput bottleneck with two clear inefficiencies.
 
-We address both.
-
-<figure>
-<img src="/imgs/blog/svd_blog/Figure_1_SVD_Time_Proportion.png" alt="SVD Overhead" width="700"/>
-<figcaption>Fig. 1 — SVD overhead as a share of total profiling time per sample. Our method reduces SVD's share from 13.0% to 3.6%, a level where it is no longer a dominant cost.</figcaption>
-</figure>
-
 ## Contributions
 
 Our implementation is publicly available at [github.com/bairixie/kv-svd](https://github.com/bairixie/kv-svd), evaluated within the [xKV framework](https://github.com/abdelfattah-lab/xKV) on an NVIDIA RTX A6000.

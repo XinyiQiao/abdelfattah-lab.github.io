@@ -377,13 +377,13 @@ def run_svd(A, k, method='ours', oversample=4, dtype=torch.bfloat16):
 
 | Stage | fp32 · Householder QR | fp16 · Cholesky-QR (ours) | Speedup |
 |-------|-----------------------|--------------------------|---------|
-| 1. Setup (dtype cast / alloc) | $0.017\text{ s}$ $(0.0\%)$ | $3.60\text{ s}$ $(3.7\%)$ | — |
-| 2. Random Projection | $39.3\text{ s}$ $(10.0\%)$ | $10.8\text{ s}$ $(11.2\%)$ | $3.6\times$ |
-| 3. Power Iteration (×4) | $314.1\text{ s}$ $(80.1\%)$ | $60.3\text{ s}$ $(62.4\%)$ | $5.2\times$ |
-| &nbsp;&nbsp;— Matrix Multiply | $91.5\text{ s}$ | $22.5\text{ s}$ | $4.1\times$ |
-| &nbsp;&nbsp;— Orthogonalization | $222.6\text{ s}$ | $37.8\text{ s}$ | $5.9\times$ |
-| 4. Project & Recover | $38.6\text{ s}$ $(9.9\%)$ | $21.9\text{ s}$ $(22.7\%)$ | $1.8\times$ |
-| **Total** | $\mathbf{392.0\text{ s}}$ | $\mathbf{96.7\text{ s}}$ | $\mathbf{4.1\times}$ |
+| 1. Setup (dtype cast / alloc) | 0.017 s (0.0%) | 3.60 s (3.7%) | — |
+| 2. Random Projection | 39.3 s (10.0%) | 10.8 s (11.2%) | <span style="color:#1a6a5a">3.6×</span> |
+| 3. Power Iteration (×4) | 314.1 s (80.1%) | 60.3 s (62.4%) | <span style="color:#1a6a5a">5.2×</span> |
+| — <span style="color:#4e79a7">Matrix Multiply</span> | 91.5 s | 22.5 s | <span style="color:#1a6a5a">4.1×</span> |
+| — <span style="color:#c0373a">Orthogonalization</span> | 222.6 s | 37.8 s | <span style="color:#1a6a5a">5.9×</span> |
+| 4. Project & Recover | 38.6 s (9.9%) | 21.9 s (22.7%) | <span style="color:#1a6a5a">1.8×</span> |
+| **Total** | **392.0 s** | **96.7 s** | <span style="color:#c0373a">**4.1×**</span> |
 
 **Takeaways.**
 

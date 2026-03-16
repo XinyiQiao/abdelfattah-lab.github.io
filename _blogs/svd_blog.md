@@ -33,7 +33,7 @@ Large Language Models are increasingly deployed at long context lengths — hund
 
 **xKV** [Chang et al., 2025] pushes this further by observing that the dominant singular vectors of KV-Caches are well-aligned *across* adjacent layers. Concatenating the KV-Caches of $G$ adjacent layers and applying one shared SVD extracts a common low-rank subspace for all layers jointly — achieving up to **6.8× higher compression** than prior inter-layer methods while improving accuracy.
 
-The catch: unlike offline weight compression, xKV must compute SVD **online** during the prefill phase of every request, since the KV-Cache is input-dependent. This online SVD step becomes a significant and growing fraction of prefill latency. Even the standard approximate `torch.svd_lowrank` (Halko et al. [2011]) accounts for **13.0%** of total per-sample profiling time — a measurable throughput bottleneck with two clear inefficiencies.
+The catch: unlike offline weight compression, xKV must compute SVD **online** during the prefill phase of every request, since the KV-Cache is input-dependent. This online SVD step becomes a significant and growing fraction of prefill latency. Even the standard approximate `torch.svd_lowrank` (Halko et al. [2011]) accounts for **13.0%** of total per-sample profiling time (see [Fig. 1](#end-to-end-svd-latency)) — a measurable throughput bottleneck with two clear inefficiencies..
 
 ## Contributions
 
@@ -43,7 +43,7 @@ We follow the same four-stage structure as `torch.svd_lowrank` with two targeted
 
 * **16-bit power iteration.** Casting matrix multiplications in Stages 1–3 to 16-bit halves memory traffic and enables full Tensor Core utilization. Matrix-multiply time in the power iteration drops from $91.5\text{ s} \to 22.5\text{ s}$ (**4.1×**).
 
-* **Numerically robust Cholesky QR.** We replace Householder QR with Cholesky QR, incorporating Gram matrix symmetrization, adaptive shift regularization [Fukaya et al., 2020], an eigh-based SPD-repair fallback [Yamazaki et al., 2015], and a Householder safety net. Orthogonalization time drops from $222.6\text{ s} \to 37.8\text{ s}$ (**5.9×**).
+* **Numerically robust Cholesky QR.** We replace Householder QR with Cholesky QR, incorporating Gram matrix symmetrization, adaptive shift regularization [Fukaya et al., 2020], an eigh-based SPD-repair fallback [Yamazaki et al., 2015], and a Householder safety net. Orthogonalization time drops from $222.6\text{ s} \to 37.8\text{ s}$ (**5.9×**; see [Fig. 2](#stage-level-breakdown)).
 
 > **Combined:** total SVD CUDA time $392.0\text{ s} \to 96.7\text{ s}$ — a **4.1× overall speedup** — and SVD's share of per-sample profiling time falls from **13.0% → 3.6%**. Averaged over four RULER subtasks, accuracy (**67.36%**) matches the `torch.svd_lowrank` baseline (67.24%) within 0.12 percentage points.
 

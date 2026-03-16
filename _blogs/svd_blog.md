@@ -1,5 +1,5 @@
 ---
-title: "Faster Online Randomized SVD for LLM KV-Cache Compression"
+title: "Randomized SVD for LLM KV-Cache Compression"
 authors:
   - key: zhihao
   - key: chichih
@@ -10,13 +10,10 @@ tags:
   - svd
   - inference
 venue: none
-year: 2025
-date: 2025-03-10
+year: 2026
+date: 2026-03-16
 stub: false
 materials:
-  - name: Paper
-    url: https://github.com/bairixie/kv-svd
-    type: file-pdf
   - name: Code
     url: https://github.com/bairixie/kv-svd
     type: code

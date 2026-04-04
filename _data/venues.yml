@@ -160,6 +160,12 @@ microconf:
   bibtex:
     type: inproceedings
     venue: booktitle
+isca:
+  short: ISCA
+  full: International Symposium on Computer Architecture
+  bibtex:
+    type: inproceedings
+    venue: booktitle
 hpca:
   short: HPCA
   full: IEEE International Symposium on High-Performance Computer Architecture

@@ -1,14 +1,14 @@
 - key: model_compression
   name: Deep Neural Network Compression
   url: /pubs/
-  people: mohamed, chichih, jordan, jake, rebecca, zhanqiu, allan, aditya
+  people: mohamed, chichih, jordan, jake, rebecca, zhanqiu, allan, aditya, yahya
   desc: >
     We create new compression algorithms to shrink the compute and memory footprint of deep neural networks.
 
 - key: systems
   name: Efficient AI Systems
   url: /pubs/
-  people: mohamed, ahmed, chichih, yash, yassine, rahul, yifei, yunhao, anthony
+  people: mohamed, ahmed, chichih, yash, yassine, rahul, yifei, yunhao, anthony, nate, yahya
   desc: >
     We analyze and optimize AI systems that host, shard, compress, and deploy large language models.
 
@@ -29,7 +29,7 @@
 - key: fpga
   name: Reconfigurable Computing
   url: /pubs/
-  people: mohamed, xilai, yuzong, junius, buqing, marta, ussama, julian, osman, angela
+  people: mohamed, xilai, yuzong, junius, buqing, marta, ussama, julian, osman, angela, nate
   desc: >
     We rethink reconfigurable computing architectures for low-latency custom AI computing.
 

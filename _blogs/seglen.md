@@ -65,7 +65,7 @@ Marconi is a prior work done on prefix caching for hybrid model. It is motivated
 Marconi proposes a **FLOP-aware cache eviction policy** for hybrid model architectures. The key idea is that eviction decisions should not rely solely on recency (as in LRU), but also consider the compute savings of each cached state.
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/flopeff.png" width="50%" />
+    <img src="/imgs/blog/seglen/flopeff.png" width="60%" />
 </div>  
 
 
@@ -92,13 +92,13 @@ We want to evaluate Marconi by integrating it into a real serving engine sglang.
 SGLang implements prefix caching using a radix tree data structure. Each tree node stores shared token prefix segement together with pointers to the cached states associated with that segment. For hybrid models, SGLang extends the radix tree to jointly manage KV cache and recurrent state.
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/mambaradixcache.png" width="85%" />
+    <img src="/imgs/blog/seglen/mambaradixcache.png" width="60%" />
 </div>  
 
 SGLang separate the memory pool into two parts: Mamba pool and KV cache pool, each of with its own allocation and eviction logic. 
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/cachepool.png" width="85%" />
+    <img src="/imgs/blog/seglen/cachepool.png" width="60%" />
 </div>  
 
 ### 4.2 Resource capacity

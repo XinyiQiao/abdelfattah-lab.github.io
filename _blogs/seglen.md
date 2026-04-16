@@ -23,7 +23,7 @@ Prefix caching has therefore become one of the most important serving optimiztio
 Recent shift in model architecture towards hybrid model has introduces new challenges for prefix caching. Hybrid models interleave attention layers with state-based recurrent layers and these two layer types exhibit fundamentally different caching behavior. These differences introduce new challenges for efficient cross-reqest prefix caching.
 
  <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/hybridmodel.png" width="85%" />
+    <img src="/imgs/blog/seglen/hybridmodel.png" width="40%" />
   </div>  
 
 In this work, we study prefix caching optimization for hybrid models. Inspired by Marconi’s core insight of FLOP-aware eviction policy, we analyze the evaluate its comp of integrating it into SGLang and propose a simpler heuristic, **SegLen**, that approximates recomputation cost while remaining model architecture-agnostic. We implement SegLen in SGLang and evaluate it across multiple workloads, showing that it achieves superior performance while significantly reducing integration complexity into real serving system.
@@ -43,7 +43,7 @@ Recurrent state exhibit following properties
 - Recurrent states are updated in-place, so a request's states cannot be rolled back to represent its prefixes
 
  <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/recurrentstate.png" width="85%" />
+    <img src="/imgs/blog/seglen/recurrentstate.png" width="50%" />
   </div>  
 
 These properties lead to fundamentally different reuse behavior compared to attention-only models and make the prefix cache complicated.
@@ -65,7 +65,7 @@ Marconi is a prior work done on prefix caching for hybrid model. It is motivated
 Marconi proposes a **FLOP-aware cache eviction policy** for hybrid model architectures. The key idea is that eviction decisions should not rely solely on recency (as in LRU), but also consider the compute savings of each cached state.
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/flopeff.png" width="85%" />
+    <img src="/imgs/blog/seglen/flopeff.png" width="50%" />
 </div>  
 
 

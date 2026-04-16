@@ -43,7 +43,7 @@ Recurrent state exhibit following properties
 - Recurrent states are updated in-place, so a request's states cannot be rolled back to represent its prefixes
 
  <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/recurrentstate.png" width="50%" />
+    <img src="/imgs/blog/seglen/recurrentstate.png" width="60%" />
   </div>  
 
 These properties lead to fundamentally different reuse behavior compared to attention-only models and make the prefix cache complicated.
@@ -65,7 +65,7 @@ Marconi is a prior work done on prefix caching for hybrid model. It is motivated
 Marconi proposes a **FLOP-aware cache eviction policy** for hybrid model architectures. The key idea is that eviction decisions should not rely solely on recency (as in LRU), but also consider the compute savings of each cached state.
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/flopeff.png" width="60%" />
+    <img src="/imgs/blog/seglen/flopeff.png" width="40%" />
 </div>  
 
 
@@ -92,13 +92,13 @@ We want to evaluate Marconi by integrating it into a real serving engine sglang.
 SGLang implements prefix caching using a radix tree data structure. Each tree node stores shared token prefix segement together with pointers to the cached states associated with that segment. For hybrid models, SGLang extends the radix tree to jointly manage KV cache and recurrent state.
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/mambaradixcache.png" width="60%" />
+    <img src="/imgs/blog/seglen/mambaradixcache.png" width="50%" />
 </div>  
 
 SGLang separate the memory pool into two parts: Mamba pool and KV cache pool, each of with its own allocation and eviction logic. 
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/cachepool.png" width="60%" />
+    <img src="/imgs/blog/seglen/cachepool.png" width="50%" />
 </div>  
 
 ### 4.2 Resource capacity
@@ -141,7 +141,7 @@ This preserves the most important signal from marconi for eviction decisions whi
 Here is an example illustrating the different eviction pick across the three policies. 
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/cacheeviction.png" width="80%" />
+    <img src="/imgs/blog/seglen/cacheeviction.png" width="50%" />
 </div>
 
 | Eviction policy | Ranking (best → worst to keep) | Eviction pick |
@@ -176,7 +176,7 @@ Across all evaluated workloads, seglen reduced mean TTFT by 29.52% on prefix-hea
 The plot below summarizes mean TTFT across workloads. The y-axis uses a log scale so both the low-latency and high-latency regimes remain visible in one figure.
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/benchmark_ttft_subplots.png" width="85%" />
+    <img src="/imgs/blog/seglen/benchmark_ttft_subplots.png" width="70%" />
 </div>
 
 | Dataset | Prompts | LRU TTFT(ms) | SegLen TTFT(ms) | TTFT Dec. | LRU Hit Rate | SegLen Hit Rate | LRU Queue Depth | SegLen Queue Depth |

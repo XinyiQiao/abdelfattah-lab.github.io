@@ -173,14 +173,19 @@ We benchmark across three different workload categories:
 
 Across all evaluated workloads, seglen reduced mean TTFT by 29.52% on prefix-heavy dataset, 26.06% on SWE-bench traces. On the ShareGPT regression benchmark, seglen remained slightly better, reducing mean TTFT by 3.38%.
 
-| Dataset | Num Prompts | LRU Mean TTFT (ms) | SegLen Mean TTFT (ms) | TTFT Decrease (%) |
-|---|---:|---:|---:|---:|
-| `mixed_prefix_eviction_dataset_7k_10k_with_noise.json` | 1800 | 1369.94 | 1256.68 | 8.27% |
-| `multi_group_shared_prefix_dataset.json` | 2760 | 253.20 | 178.46 | 29.52% |
-| `ShareGPT_V3_unfiltered_cleaned_split.json` | 2000 | 83.31 | 80.49 | 3.38% |
-| `swebench_sps=10_art=5_nums=100.jsonl` | 1200 | 40789.14 | 34292.94 | 15.93% |
-| `swebench_sps=10_art=10_nums=100.jsonl` | 1200 | 41011.02 | 30324.60 | 26.06% |
+The plot below summarizes mean TTFT across workloads. The y-axis uses a log scale so both the low-latency and high-latency regimes remain visible in one figure.
 
+<div style="text-align:center;">
+    <img src="/imgs/blog/seglen/benchmark_ttft_subplots.png" width="85%" />
+</div>
+
+| Dataset | Prompts | LRU TTFT(ms) | SegLen TTFT(ms) | TTFT Dec. | LRU Hit Rate | SegLen Hit Rate | LRU Queue Depth | SegLen Queue Depth |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `mixed_prefix_eviction_dataset_7k_10k_with_noise.json` | 1800 | 1369.94 | 1256.68 | 8.27% | 94.84 | 94.82 | 3.55 | 3.39 |
+| `multi_group_shared_prefix_dataset.json` | 2760 | 253.20 | 178.46 | 29.52% | 85.95 | 85.80 | 0.07 | 0.02 |
+| `ShareGPT_V3_unfiltered_cleaned_split.json` | 2000 | 83.31 | 80.49 | 3.38% | 0.31 | 1.36 | 0.00 | 0.00 |
+| `swebench_sps=10_art=5_nums=100.jsonl` | 1200 | 40789.14 | 34292.94 | 15.93% | 21.23 | 25.94 | 144.87 | 124.89 |
+| `swebench_sps=10_art=10_nums=100.jsonl` | 1200 | 41011.02 | 30324.60 | 26.06% | 19.87 | 26.99 | 147.36 | 110.19 |
 
 Script for benchmark reproduction: 
 

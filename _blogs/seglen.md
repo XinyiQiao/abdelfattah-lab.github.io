@@ -16,86 +16,146 @@ materials: []
 
 ## Introduction
 
-LLM applications are increasingly using longer context windows during serving. Techniques such as few-shot prompting, chain-of-thought reasoning, retrieval-augmented generation, and structured prompt templates often require providing substantial context to the model. As context length growth, it also significantly increases the cost of the **prefill** phase in autoregressive inference.
+Modern LLM applications are pushing toward longer context windows. Few-shot prompting, chain-of-thought reasoning, and retrieval-augmented generation all rely on feeding more context into the model. 
 
-Prefix caching has therefore become one of the most important serving optimiztions widely adopted by modern serving systems such as vLLM and SGLang, which enables reuse of cached states across requests that share common prefixes. When two requests share a prefix, the system can skip recomputation for the shared tokens and directly reuse previously computed states. Existing prefix caching mechanisms are primarily designed for **dense attention-based architectures**, where key-value (KV) cache entries are stored per token and can be partially reused.
+As context length grows, the cost of **prefill** phase quickly adds up, making inference significantly more expensive. 
 
-Recent shift in model architecture towards hybrid model has introduces new challenges for prefix caching. Hybrid models interleave attention layers with state-based recurrent layers and these two layer types exhibit fundamentally different caching behavior. These differences introduce new challenges for efficient cross-reqest prefix caching.
+Prefix caching has therefore become a core optimization in serving systems like vLLM and SGLang. The idea is simple: if two requests share the same prefix, we reuse previously computed states instead of recomputing them. 
+
+For attention-based models, this works really well. KV cache is stored per token, so systems can reuse partial prefixes. Even if two requests only overlap halfway, you still get meaningful savings.
+
+But Hybrid models make this much less straightforward. Modern model architectures are increasingly hybrid - they mix attention layers with recurrent components (like state space models) to reduce compute and memory cost.
 
  <div style="text-align:center;">
     <img src="/imgs/blog/seglen/hybridmodel.png" width="40%" />
   </div>  
 
-In this work, we study prefix caching optimization for hybrid models. Inspired by Marconi’s core insight of FLOP-aware eviction policy, we analyze the evaluate its comp of integrating it into SGLang and propose a simpler heuristic, **SegLen**, that approximates recomputation cost while remaining model architecture-agnostic. We implement SegLen in SGLang and evaluate it across multiple workloads, showing that it achieves superior performance while significantly reducing integration complexity into real serving system.
+| Property | Attention | SSM |
+| --- | --- | --- |
+| Computational Complexity | \(O(L^2)\) | \(O(L)\) |
+| Inference-Time Memory | \(O(L)\) | \(O(1)\) |
+
+These recurrent states behave very differently from KV caches. Instead of storing information per token, they compress the entire prefix into a single fixed-size state and update it in place, wich means you can't partially reuse a prefix. 
+
+So the question now becomes:
+
+> **How should prefix caching work for hybrid models?**
+
+In this work, we take the FLOP-aware cache eviction idea from Marconi—a recent approach to recomputation-aware caching for hybrid models—and try to bring it into a real serving system SGLang. In doing so, we run into a number of practical considerations, which led us to propose a simpler heuristic approach: SegLen.
+
+SegLen is a lightweight, model-agnostic heuristic that captures the core intuition behind Marconi, while being much easier to integrate into a real serving engine. We implement SegLen in SGLang and evaluate it across a range of workloads and cache settings. Our results show that SegLen delivers strong performance while significantly simplifying system integration.
 
 ## Problem
 
-Prefix caching is well understood for dense attention models, where KV cache entries are stored per token and can be partially reused. However, hybrid architectures introduce **recurrent states** (e.g., SSM states) that behave very differently from token-level KV caches. These differences fundamentally change the reuse pattern and make cache eviction more challenging.
+Prefix caching is well understood for attention-only models. But once we introduce recurrent components, the behavior of the cache changes in important ways.
 
-### 2.1 Observed Properties: Recurrent State vs KV Cache
+### 2.1 Recurrent State vs KV Cache
 
-Recurrent state exhibit following properties
+Let's start with the key differences.
 
-- Recurrent states are constant-sized regardless of the number of tokens it represent
+KV cache (attention):
+- Stored per token 
+- Grows linearly with sequence length
+- Supports partial reuse
 
-- Recurrent states are orders of magnitude larger than the KVs of a single token
-
-- Recurrent states are updated in-place, so a request's states cannot be rolled back to represent its prefixes
+Recurrent state (SSM / Mamba):
+- Fixed size regardless of sequence length
+- Much larger than a single token’s KV
+- Updated in-place
 
  <div style="text-align:center;">
     <img src="/imgs/blog/seglen/recurrentstate.png" width="60%" />
   </div>  
 
-These properties lead to fundamentally different reuse behavior compared to attention-only models and make the prefix cache complicated.
+Because recurrent states are updated in place, you can’t roll them back to represent earlier prefixes.
+
+### 2.2 Core Problem: All-or-Nothing Reuse
+With KV cache, you can reuse any partial prefix. 
+
+With recurrent state, reuse becomes **all-or-nothing**.
+
+To reuse a recurrent state, you need a checkpoint that exactly matches the full prefix of the new request. 
+
+In practice, this makes reuse much more sparse and much harder to exploit.
+
+### 2.3 Systems Challenge: Big, Sparse, and Expensive Cache
+
+To maximize reuse opportunities, one natural idea is to store more checkpoints so we have a better chance of hitting an exact prefix match.
+
+But this quickly creates a new problem.
+- Each recurrent state is large
+- More checkpoints means more memory usage
+- But most checkpoints are still rarely reused
+
+As a result, the cache grows quickly, but the hit rate doesn’t improve much. You end up with a cache that is large, expensive, and sparsely utilized.
+
+So the real challenge becomes:
+
+> **how do we decide which cache entries are actually worth keeping?**
 
 
-### 2.2 Core Problem: Sparse Reuse with Exact Prefix Matching
-To realize prefix reuse, we need one recurrent state that excatly matrches all prefix tokens. As a result, recurrent state exhibit "all or nothing" reusability.
+## 3. Marconi: Rethinking Cache Eviction
 
-### 2.3 Systems Challenge: Cache underutilization and High memory usage 
+Marconi proposed a new prefix caching strategy for hybrid model. 
 
-To maximize reuse opportunities, fine-grained state checkpoints if required. However, increased checkpointing frequency inflates the number of cache entries generated per sequence, each of which is large and can quickly overwhelme the limited caceh budget. Worse, many recurrent states are never reused creating sparesely-hit entries and cache underutilization. The results in **large yet sparsely-hit cache entries**. As a result, we need a better cache management mechnaism for prefix caching in Hybrid LLM inference.
+It starts from a simple observation. 
 
-## 3. Marconi
+In attention layers, KV cache grows with sequence length. That means longer prefixes take more memory and also save more compute when reused. 
 
-### Key Insight: Cost Aware Cache Eviction
-
-Marconi is a prior work done on prefix caching for hybrid model. It is motivated by the property that for attention layers, KV cache size grows linearly with sequence length, and so do compute savings from reusing it. So larger KV cache entries save proportionally more compute. However, a recurrent state is constant-size regardless of sequence length and thus the reuse value it delivers. 
-
-Marconi proposes a **FLOP-aware cache eviction policy** for hybrid model architectures. The key idea is that eviction decisions should not rely solely on recency (as in LRU), but also consider the compute savings of each cached state.
+Recurrent states behave very differently. They are constant size regardless of sequence length. But the amount of compute they can save depends on how many tokens they represent. So two cache entries can take the same memory - but have very different reuse value.
 
 <div style="text-align:center;">
     <img src="/imgs/blog/seglen/flopeff.png" width="40%" />
 </div>  
 
+### Key Insight: Flop Aware Cache Eviction
 
-### FLOP-Efficiency score
-Marconi propose a new metric **FLOP efficiency** to measure the compute savings per unit of memory achieved by reusing a prefix cache entry:
+Most systems today rely on simple cache eviction policies like LRU (least recently used), which evict entries based on recency. 
+
+But recency alone doesn’t tell us how valuable an entry is.
+
+Marconi proposes a different approach: make eviction decisions based on compute savings.
+
+Each cache entry is scored based on:
+- how much compute (FLOPs) it can save if reused
+- how much memory it consumes
+
+This leads to the notion of FLOP efficiency — how much compute you save per unit of memory:
 
 $$
 \text{FLOP-efficiency} = \frac{\text{total FLOPs across layers}}{\text{memory consumption of all states}}
 $$
 
-### FLOP-Aware Eviction Policy
-Marconi proposes a flop aware evictino policy that assess candidates for eviction based on both potential compute savings and recency. Marconi proposes a utility score S that account for Flop efficiency
+To combine this with recency, Marconi defines a utility score:
 
 $$
 s(n) = \mathrm{recency}(n) + \alpha \cdot \mathrm{flop\_efficiency}(n)
 $$
 
+This metric favors cache entries with higher recency, save more compute, and take less memory.
+
 ## 4. Integrating Marconi into SGLang
 
-We want to evaluate Marconi by integrating it into a real serving engine sglang. Let's first understand how SGLang implements prefix caching for hybrid models.
+We want to bring Marconi into a real serving system by integrating it into SGLang. Before diving into the integration, it’s worth understanding how SGLang handles prefix caching for hybrid models. 
 
-### 4.1 SGLang's Hybrid State Management
+### 4.1 SGLang's Hybrid Cache Management
 
-SGLang implements prefix caching using a radix tree data structure. Each tree node stores shared token prefix segement together with pointers to the cached states associated with that segment. For hybrid models, SGLang extends the radix tree to jointly manage KV cache and recurrent state.
+SGLang implements prefix caching using a radix tree.
+
+Each node in the tree represents a shared prefix segment, and stores:
+- the tokens for that segment
+- pointers to the cached states
+
+For hybrid models, SGLang extends this structure to manage both KV cache and recurrent state together.
 
 <div style="text-align:center;">
     <img src="/imgs/blog/seglen/mambaradixcache.png" width="50%" />
 </div>  
 
-SGLang separate the memory pool into two parts: Mamba pool and KV cache pool, each of with its own allocation and eviction logic. 
+Under the hood, memory is split into two separate pools:
+- KV cache pool (attention)
+- Mamba pool (recurrent state)
+Each pool has its own allocation and eviction logic.
 
 <div style="text-align:center;">
     <img src="/imgs/blog/seglen/cachepool.png" width="50%" />
@@ -103,42 +163,66 @@ SGLang separate the memory pool into two parts: Mamba pool and KV cache pool, ea
 
 ### 4.2 Resource capacity
 
-Another practical property of the system is that Mamba capacity is usually more constrained than full KV capacity. Recurrent states are fewer in number and expensive enough that the Mamba side of the cache becomes the real bottleneck. As a result, prefix reuse behavior is often determined less by whether full KV entries exist and more by whether the relevant recurrent checkpoints still fit in the available Mamba slots. In other words, Mamba pressure tends to drive eviction.
+Another practical aspect is that Mamba pool is usually much more resource constrained than the KV Cache pool. Recurrent states are much larger in size than KV for a single token, which means the Mamba pool have much fewer slots, faces more eviction pressure and drives prefix reuse.
 
 | Cache pool | Slots | Total size |
 | --- | ---: | ---: |
 | Mamba cache pool | 151 | 7.29 GB |
 | KV cache pool | 263,865 token slots | 8.06 GB |
 
+| Cache Pool | Slots | Total size |
+|---|---:|---:|
+| Mamba | 424 | 20.39 GB |
+| KV | 740752 | 22.60 GB |
+
 
 ### 4.3 Cache Eviction Behavior
-SGLang also treats KV eviction and recurrent-state eviction differently:
+SGLang also treats KV cache and recurrent state very differently during eviction.
 
-- For Full KV eviction, the eviction candidacte consider leaf nodes only. It will free KV cache and SSM state, as well as deleting the node from the tree. 
-- For Mamba eviction, eviction candidate can target both leaf and internal nodes. If eviction is targeting an internal node, only the SSM state is removed but the internal node will remain in the tree and the KV cache will also be there. It becomes a tombstone node meaning an internal node with KV cache but lost its mamba state. 
+KV eviction
+- Only applies to leaf nodes
+- Removes both KV cache and recurrent state
+- Deletes the node entirely
+
+Mamba eviction
+- Can target both leaf and internal nodes
+- Removes only the recurrent state
+- Leaves the internal node and its KV Cache intact 
+
+This creates **tombstone nodes** - internal nodes that still have KV cache, but no recurrent state.
 
 ### 4.4 Prefix Matching
 
-To realize prefix reusing for hybrid model, we need all prefix tokens’ KVs for each Attention layer and one SSM state that exactly matches all prefix tokens for each SSM layer. Reuse can proceed only to the deepest ancestor that still has a valid Mamba state.
+For hybrid models, reuse requires:
+- KV cache for all prefix tokens
+- and a recurrent state that exactly matches the prefix
 
-This is an important difference from dense-attention-only caching. In an attention-only model, reuse can be thought of as continuing from any cached token boundary. In a hybrid model, reuse is anchored at nodes that carry valid recurrent checkpoints. While the KV prefix may extend through tombstone nodes, reuse stops at the last node for which recurrent state is present. If the traversal reaches a node whose recurrent state has been evicted, then all tokens below that point must be replayed even if some tree structure remains.
+Reuse can only proceed up to the deepest node that still has a valid recurrent state. Even KV prefix may extend through tombstone nodes, reuse stops once you hit a tombstone node. Everything beyond that point has to be recomputed.
 
 ## 4.2 Challenges Integrating Marconi
-We integrated Marconi into SGLang for Qwen/Qwen3.5-9B.
+When we integrate Marconi into SGLang (using Qwen/Qwen3.5-9B), a few practical issues showed up.
 
-First, tombstone nodes complicates the FLOP efficiency scoring calculation. Marconi flop efficiency scoring calculate the marginal flops saved by this node relative to its parent assuming the parent node is not tombstoned. But due sglang allows tombstone nodes, the exact replay cost of a node can be much longer to the valid ancestor that stores the mamba state.
+First, tombstone nodes complicate the scoring logic.
 
-Second, exact FLOPs calculation is model-specific. A production serving system like SGLang supports many models and variants, and a fully faithful FLOPs-saving estimate would require architecture-specific logic. That adds engineering overhead, makes integration less clean, and complicates maintenance.
+Marconi’s FLOP-efficiency assumes parent nodes are valid. But in SGLang, that’s not always true due to tombstone nodes. Recompute distance may extend far beyond the immediate parent.
 
-So the question became: can we preserve the key idea from Marconi, namely recomputation-aware eviction, without depending on model-specific FLOPs accounting?
+Second, FLOP estimation is model-specific.
 
-## 5. SegLen Heuristic
+Accurately computing FLOPs requires architecture-specific logic, which tightly couples the eviction policy to model details and makes the system harder to maintain.
 
-The presence of tombstone node and model architecture dependency complicated the exact calculation of marconi flop efficiency score. Flop efficiency aturally favors retaining SSM state that represent longer prefix, so we propose `seglen` which uses the reply distance to the nearest parent node that is not tombstoned as a heuristic approximation to Marconi's FLOPs-efficiency score. Seglen cache eviction policies combine this replay distance with recency for the eviction candidate scoring. 
+## 5. SegLen: A Simpler Heuristic
 
-This preserves the most important signal from marconi for eviction decisions while significantly reduced integration complexity into sglang. 
+The core idea from Marconi is simple: states that represent longer prefixes are more valuable to keep.
 
-Here is an example illustrating the different eviction pick across the three policies. 
+So instead of computing FLOPS exactly, we looked for a simpler signal that captures the core idea. 
+
+We proposed a heuristic `seglen` that uses the reply distance to the nearest parent node that still has a valid recurrent state as a heuristic approximation to Marconi's FLOPs-efficiency score. 
+
+Seglen favors keeping entries that represent longer prefixes, which naturally save more recomputation and is therefore more valuable to keep. 
+
+To make eviction decisions, `seglen` combines replay distance with recency — similar to Marconi, but without requiring model-specific FLOP estimation.
+
+Here's a simple example illustrating how different eviction policies behave:
 
 <div style="text-align:center;">
     <img src="/imgs/blog/seglen/cacheeviction.png" width="50%" />
@@ -147,75 +231,136 @@ Here is an example illustrating the different eviction pick across the three pol
 | Eviction policy | Ranking (best → worst to keep) | Eviction pick |
 |---|---|---|
 | LRU | B (mru) → C → D → A (lru) | A |
-| SegLen | A (seglen=1) → B (seglen=3) → C (seglen=4) → D (seglen=4+2=6) | D |
 | Marconi | A (efficiency=0.12) → B (efficiency=0.31) → D (efficiency=0.45) → C (efficiency=0.67) | C |
+| SegLen | A (seglen=1) → B (seglen=3) → C (seglen=4) → D (seglen=4+2=6) | D |
 
-When eviction is needed, LRU blindly picks A — the coldest node regardless of recomputation cost. SegLen picks D — its replay distance is the longest (4 tokens through tombstoned C + 2 of its own = 6). Marconi picks C — its 4-token segment yields the highest FLOP efficiency score.
+When eviction is needed
+- LRU picks A — the least recently used node
+- Marconi picks C — its 4-token segment yields the highest FLOP efficiency score
+- SegLen picks D — its replay distance is the longest (4 tokens through tombstoned C + 2 of its own = 6). 
 
 The implementation of SegLen can be found [here](https://github.com/sgl-project/sglang/pull/22172).
-
 
 ## 6. Experiments
 
 ### 6.1 Setup
 
-We evaluate `seglen` against `lru` on 1xH100 using SGLang on `Qwen/Qwen3.5-9B`. We studied how different cache policies behavr across different workloads and available cache memories. 
+We evaluate `segLen` against `marconi` and `lru` in SGLang using Qwen/Qwen3.5-9B model on a single H100 GPU.
+
+Our goal is to understand how different cache policies behavr under different workloads and memory constraints.
 
 ### 6.2 Across Workloads
 
-We benchmark across three different workload categories:
+We evaluate across two types of workloads:
   
-- prefix-heavy dataset: a synthetic workload mixing various prefix groups with random noise
+<!-- - prefix-heavy dataset: synthetic workload mixing various prefix groups with random noise (multi_group_shared_prefix_dataset.json) -->
+- SWE-bench traces: realistic workloads with meaningful prefix reuse
+- ShareGPT with low prefix reuse: a regression check in the low-reuse regime
 
-- SWE-bench traces: SWE-bench traces that capture realistic workload and re-use pattern
+Across these workloads, SegLen consistently reduces mean TTFT compared to LRU, achieving over 50% reduction on SWE-bench traces, while remaining competitive in low-reuse settings.
 
-- ShareGPT with low prefix reuse**: a regression check in the low-reuse regime
+<!-- ### mixed output
+| Policy | Mean TTFT (ms) | Mean queue depth | Mean cache hit rate |
+|---|---:|---:|---:|
+| lru | 2274.69 | 19.0400 | 0.6529 |
+| seglen | 2233.17 | 18.8548 | 0.6538 |
+| marconi | 2325.26 | 20.9328 | 0.6548 |
+| marconi-v2 | 2901.55 | 28.3761 | 0.6685 | -->
 
-Across all evaluated workloads, seglen reduced mean TTFT by 29.52% on prefix-heavy dataset, 26.06% on SWE-bench traces. On the ShareGPT regression benchmark, seglen remained slightly better, reducing mean TTFT by 3.38%.
+#### SWE-Bench
+On swe-bench traces where each prefix is reused ~5 tmies on average, seglen reduced TTFT by 51.3% compared to lru, while also improving cache hit rate and reducing queue depth.
 
-The plot below summarizes mean TTFT across workloads. The y-axis uses a log scale so both the low-latency and high-latency regimes remain visible in one figure.
+| Policy | Mean TTFT (ms) | Mean queue depth | Mean cache hit rate |
+|---|---:|---:|---:|
+| lru | 2107.68 | 10.3686 | 0.3261 |
+| seglen | 1027.35 | 4.8386 | 0.4179 |
+| marconi | 1178.64 | 5.6679 | 0.4065 |
+| marconi-v2 | 1521.77 | 7.7896 | 0.4182 |
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/benchmark_ttft_subplots.png" width="70%" />
+    <img src="/imgs/blog/seglen/swebench_art5_ttft.png" width="70%" />
 </div>
 
-| Dataset | Prompts | LRU TTFT(ms) | SegLen TTFT(ms) | TTFT Dec. | LRU Hit Rate | SegLen Hit Rate | LRU Queue Depth | SegLen Queue Depth |
-| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| `mixed_prefix_eviction_dataset_7k_10k_with_noise.json` | 1800 | 1369.94 | 1256.68 | 8.27% | 94.84 | 94.82 | 3.55 | 3.39 |
-| `multi_group_shared_prefix_dataset.json` | 2760 | 253.20 | 178.46 | 29.52% | 85.95 | 85.80 | 0.07 | 0.02 |
-| `ShareGPT_V3_unfiltered_cleaned_split.json` | 2000 | 83.31 | 80.49 | 3.38% | 0.31 | 1.36 | 0.00 | 0.00 |
-| `swebench_sps=10_art=5_nums=100.jsonl` | 1200 | 40789.14 | 34292.94 | 15.93% | 21.23 | 25.94 | 144.87 | 124.89 |
-| `swebench_sps=10_art=10_nums=100.jsonl` | 1200 | 41011.02 | 30324.60 | 26.06% | 19.87 | 26.99 | 147.36 | 110.19 |
 
-Script for benchmark reproduction: 
+On swe-bench trace where each prefix is reused ~10 times, seglen reduced TTFT by 51.5% compared to lru.
 
+| Policy | Mean TTFT (ms) | Mean queue depth | Mean cache hit rate |
+|---|---:|---:|---:|
+| lru | 2273.05 | 11.2514 | 0.2994 |
+| seglen | 1101.67 | 5.9165 | 0.4353 |
+| marconi | 1335.84 | 7.2620 | 0.4242 |
+| marconi-v2 | 1883.44 | 10.4380 | 0.4214 |
+
+<div style="text-align:center;">
+    <img src="/imgs/blog/seglen/swebench_art10_ttft.png" width="70%" />
+</div>
+
+result on swebench_sps=10_art=10_nums=100.jsonl
+
+#### ShareGPT
+
+On ShareGPT dataset, where prefix reuse is minimal, SegLen remains competitive and achieves a 0.12% reduction in TTFT compared to lru.
+
+| Policy | Mean TTFT (ms) | Mean queue depth | Mean cache hit rate |
+|---|---:|---:|---:|
+| lru | 72.48 | 0.0004 | 0.0022 |
+| seglen | 72.39 | 0.0000 | 0.0049 |
+| marconi | 75.29 | 0.0004 | 0.0049 |
+| marconi-v2 | 113.57 | 0.0013 | 0.0051 |
+
+<div style="text-align:center;">
+    <img src="/imgs/blog/seglen/share_gpt_ttft.png" width="70%" />
+</div>
+
+result on ShareGPT_V3_unfiltered_cleaned_split.json
+
+These results show that with meaninful prefix reuse, SegLen delivers significant performance gains. When reuse is low, it still remains competitive.
+
+### Across Memory Budgets
+
+Next, we vary available cache memory to understand how policies behave under different levels of memory pressure. 
+
+| Mem fraction static | Policy | Mean TTFT (ms) | Mean queue depth | Mean cache hit rate |
+|---|---|---:|---:|---:|
+| 0.77 | lru | 1697.04 | 8.4729 | 0.3317 |
+| 0.77 | seglen | 934.93 | 4.6355 | 0.4226 |
+| 0.77 | marconi | 1110.74 | 5.4124 | 0.4088 |
+| 0.77 | marconi-v2 | 1499.00 | 8.0385 | 0.4218 |
+| 0.7 | lru | 2809.16 | 14.3618 | 0.2912 |
+| 0.7 | seglen | 1704.70 | 9.0218 | 0.3775 |
+| 0.7 | marconi | 1992.97 | 10.1597 | 0.3835 |
+| 0.7 | marconi-v2 | 2155.35 | 11.3566 | 0.3858 |
+| 0.5 | lru | 13283.69 | 58.0286 | 0.1290 |
+| 0.5 | seglen | 9706.63 | 44.9238 | 0.2249 |
+| 0.5 | marconi | 10194.86 | 46.8752 | 0.2238 |
+| 0.5 | marconi-v2 | 9547.27 | 44.6585 | 0.2347 |
+
+<div style="text-align:center;">
+    <img src="/imgs/blog/seglen/ttft_vs_memory_fraction.png" width="70%" />
+</div>
+
+Results on swebench_sps=10_art=5_nums=100.jsonl dataset
+
+The trend is clear: as memory pressure increases, the advantage of `seglen` becomes more pronounced.
+
+Reproducibility
+
+Scripts: 
 - [benchmark_cache_eviction_multi.py](https://raw.githubusercontent.com/abdelfattah-lab/sglang/refs/heads/benchmark/benchmark_cache_eviction_multi.py)
 - [benchmark_cache_eviction_trace_multi.py](https://raw.githubusercontent.com/abdelfattah-lab/sglang/refs/heads/benchmark/benchmark_cache_eviction_trace_multi.py)
 
-bench serving changes to support swe-bench traces:
+Bench-serving changes for swe-bench traces support:
 - [bench_serving](https://github.com/abdelfattah-lab/sglang/tree/benchmark)
 
-Download datasets: https://huggingface.co/datasets/Isabella5/sglang-seglen-benchmark  
-
-### Across cache memories
-
-We also sweep available memory fractions on a H100 to evaluate the policies under increasing cache pressure.
-
-The main trend is clear: as memory pressure increases, the advantage of `seglen` becomes more obvious.
-
-This matches the systems intuition behind the policy. When memory is plentiful, the cache can retain many reusable checkpoints, so the exact eviction choice matters less. But as memory becomes tighter, each eviction decision has a larger downstream effect on replay cost. In that regime, a policy that is better aligned with the true replay boundary has a larger payoff.
-
-This memory-sweep result is important because it shows that `seglen` is not just a better policy in the easy regime. Its advantage grows precisely when cache management becomes harder and more important.
-
-The plots below show the memory-fraction sweep on H100 for `lru` and `seglen`. As the cache budget tightens, `seglen` improves TTFT and reduces queue depth more clearly. At the highest tested budget (`0.72`), `lru` slightly outperforms `seglen` on TTFT and hit rate, while `seglen` still maintains the lower queue depth.
-
+Datasets
+- https://huggingface.co/datasets/Isabella5/sglang-seglen-benchmark  
 
 ## Conclusion
 
-Hybrid LLMs make prefix caching fundamentally harder. Recurrent state is constant-size but large, cannot be rolled back like dense KV cache, and is only reusable at exact checkpoints. Fine-grained checkpointing increases reuse opportunities, but it also produces a cache full of large, sparsely-hit entries. In that setting, eviction policy matters a lot.
+Prefix caching works well for attention-only models, but hybrid architectures introduce a new challenge: recurrent states make reuse all-or-nothing, leading to large, sparsely-used cache entries.
 
-Marconi provides the right high-level answer: eviction should be aware of recomputation cost, not just recency. But integrating exact FLOP-aware scoring into a production system like SGLang is challenging because of tombstone nodes and the need for model-specific FLOPs estimation.
+Marconi offers an important insight: cache eviction should be guided by recomputation cost, not just recency. Building on this idea, we propose SegLen, a simple heuristic that preserves this core intuition while being much easier to integrate into a real serving system like SGLang.
 
-`seglen` is a practical middle ground. It approximates the same intuition using replay distance to the nearest reusable ancestor, which is cheap to compute, architecture-agnostic, and naturally compatible with SGLang's `MambaRadixCache` design.
+Across our experiments, SegLen achieves over 50% reduction in TTFT on realistic workloads, remains competitive in low-reuse settings, and shows even larger gains under memory pressure.
 
-The result is a simple systems heuristic that is easy to integrate and delivers strong TTFT improvements in practice.
+In the end, SegLen demonstrates that a simple, system-friendly approximation of recomputation cost is enough to make effective cache eviction decisions in real-world serving systems.

@@ -32,8 +32,8 @@ But Hybrid models make this much less straightforward. Modern model architecture
 
 | Property | Attention | SSM |
 | --- | --- | --- |
-| Computational Complexity | \(O(L^2)\) | \(O(L)\) |
-| Inference-Time Memory | \(O(L)\) | \(O(1)\) |
+| Computational Complexity | $O(L^2)$ | $O(L)$ |
+| Inference-Time Memory | $O(L)$ | $O(1)$ |
 
 These recurrent states behave very differently from KV caches. Instead of storing information per token, they compress the entire prefix into a single fixed-size state and update it in place, wich means you can't partially reuse a prefix. 
 
@@ -41,7 +41,7 @@ So the question now becomes:
 
 > **How should prefix caching work for hybrid models?**
 
-In this work, we take the FLOP-aware cache eviction idea from Marconi—a recent approach to recomputation-aware caching for hybrid models—and try to bring it into a real serving system SGLang. In doing so, we run into a number of practical considerations, which led us to propose a simpler heuristic approach: SegLen.
+In this work, we take the FLOP-aware cache eviction idea from Marconi—a recent approach for hybrid model prefix caching—and try to bring it into a real serving system SGLang. In doing so, we identified several practical considerations, which led us to propose a simpler heuristic approach: SegLen.
 
 SegLen is a lightweight, model-agnostic heuristic that captures the core intuition behind Marconi, while being much easier to integrate into a real serving engine. We implement SegLen in SGLang and evaluate it across a range of workloads and cache settings. Our results show that SegLen delivers strong performance while significantly simplifying system integration.
 
@@ -74,9 +74,7 @@ With KV cache, you can reuse any partial prefix.
 
 With recurrent state, reuse becomes **all-or-nothing**.
 
-To reuse a recurrent state, you need a checkpoint that exactly matches the full prefix of the new request. 
-
-In practice, this makes reuse much more sparse and much harder to exploit.
+To reuse a recurrent state, you need a checkpoint that exactly matches the full prefix of the new request. In practice, this makes reuse much more sparse and much harder to exploit.
 
 ### 2.3 Systems Challenge: Big, Sparse, and Expensive Cache
 
@@ -96,9 +94,7 @@ So the real challenge becomes:
 
 ## 3. Marconi: Rethinking Cache Eviction
 
-Marconi proposed a new prefix caching strategy for hybrid model. 
-
-It starts from a simple observation. 
+Marconi proposed a new prefix caching strategy for hybrid model. It starts from a simple observation. 
 
 In attention layers, KV cache grows with sequence length. That means longer prefixes take more memory and also save more compute when reused. 
 
@@ -158,23 +154,17 @@ Under the hood, memory is split into two separate pools:
 Each pool has its own allocation and eviction logic.
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/cachepool.png" width="50%" />
+    <img src="/imgs/blog/seglen/cachepool.png" width="45%" />
 </div>  
 
 ### 4.2 Resource capacity
 
-Another practical aspect is that Mamba pool is usually much more resource constrained than the KV Cache pool. Recurrent states are much larger in size than KV for a single token, which means the Mamba pool have much fewer slots, faces more eviction pressure and drives prefix reuse.
-
-| Cache pool | Slots | Total size |
-| --- | ---: | ---: |
-| Mamba cache pool | 151 | 7.29 GB |
-| KV cache pool | 263,865 token slots | 8.06 GB |
+Another practical aspect is that Mamba pool is usually much more resource constrained than KV Cache pool. Recurrent states are much larger in size than the KV for a single token, which means Mamba pool have much fewer slots, faces more eviction pressure, and drives prefix reuse.
 
 | Cache Pool | Slots | Total size |
 |---|---:|---:|
 | Mamba | 424 | 20.39 GB |
 | KV | 740752 | 22.60 GB |
-
 
 ### 4.3 Cache Eviction Behavior
 SGLang also treats KV cache and recurrent state very differently during eviction.
@@ -199,8 +189,8 @@ For hybrid models, reuse requires:
 
 Reuse can only proceed up to the deepest node that still has a valid recurrent state. Even KV prefix may extend through tombstone nodes, reuse stops once you hit a tombstone node. Everything beyond that point has to be recomputed.
 
-## 4.2 Challenges Integrating Marconi
-When we integrate Marconi into SGLang (using Qwen/Qwen3.5-9B), a few practical issues showed up.
+## 4.2 Integration Considerations
+When we integrate Marconi into SGLang (using Qwen/Qwen3.5-9B), a few practical considerations showed up.
 
 First, tombstone nodes complicate the scoring logic.
 
@@ -212,9 +202,7 @@ Accurately computing FLOPs requires architecture-specific logic, which tightly c
 
 ## 5. SegLen: A Simpler Heuristic
 
-The core idea from Marconi is simple: states that represent longer prefixes are more valuable to keep.
-
-So instead of computing FLOPS exactly, we looked for a simpler signal that captures the core idea. 
+The core idea from Marconi is simple: states that represent longer prefixes are more valuable to keep. So instead of computing FLOPS exactly, we looked for a simpler signal that captures the core idea. 
 
 We proposed a heuristic `seglen` that uses the reply distance to the nearest parent node that still has a valid recurrent state as a heuristic approximation to Marconi's FLOPs-efficiency score. 
 
@@ -278,7 +266,7 @@ On swe-bench traces where each prefix is reused ~5 tmies on average, seglen redu
 | marconi-v2 | 1521.77 | 7.7896 | 0.4182 |
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/swebench_art5_ttft.png" width="70%" />
+    <img src="/imgs/blog/seglen/swebench_art5_ttft.png" width="50%" />
 </div>
 
 
@@ -292,7 +280,7 @@ On swe-bench trace where each prefix is reused ~10 times, seglen reduced TTFT by
 | marconi-v2 | 1883.44 | 10.4380 | 0.4214 |
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/swebench_art10_ttft.png" width="70%" />
+    <img src="/imgs/blog/seglen/swebench_art10_ttft.png" width="50%" />
 </div>
 
 result on swebench_sps=10_art=10_nums=100.jsonl
@@ -309,7 +297,7 @@ On ShareGPT dataset, where prefix reuse is minimal, SegLen remains competitive a
 | marconi-v2 | 113.57 | 0.0013 | 0.0051 |
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/share_gpt_ttft.png" width="70%" />
+    <img src="/imgs/blog/seglen/share_gpt_ttft.png" width="50%" />
 </div>
 
 result on ShareGPT_V3_unfiltered_cleaned_split.json

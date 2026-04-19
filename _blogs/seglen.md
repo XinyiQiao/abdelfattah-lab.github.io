@@ -145,7 +145,7 @@ Each node in the tree represents a shared prefix segment, and stores:
 For hybrid models, SGLang extends this structure to manage both KV cache and recurrent state together.
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/mambaradixcache.png" width="50%" />
+    <img src="/imgs/blog/seglen/mambaradixtree.png" width="50%" />
 </div>  
 
 Under the hood, memory is split into two separate pools:

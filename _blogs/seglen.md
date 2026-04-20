@@ -272,6 +272,10 @@ Across these workloads, SegLen consistently reduces mean TTFT compared to LRU, a
 #### SWE-Bench
 On swe-bench traces where each prefix is reused ~5 times on average, seglen reduced TTFT by 51.3% compared to lru, while also improving cache hit rate and reducing queue depth.
 
+<div style="text-align:center;">
+    <img src="/imgs/blog/seglen/swebench_art5_ttft.png" width="50%" />
+</div>
+
 | Policy | Mean TTFT (ms) | Mean queue depth | Mean cache hit rate |
 |---|---:|---:|---:|
 | lru | 2107.68 | 10.3686 | 0.3261 |
@@ -281,11 +285,11 @@ On swe-bench traces where each prefix is reused ~5 times on average, seglen redu
 
 *Results on `swebench_sps=10_art=5_nums=100.jsonl` dataset*
 
-<div style="text-align:center;">
-    <img src="/imgs/blog/seglen/swebench_art5_ttft.png" width="50%" />
-</div>
-
 On swe-bench trace where each prefix is reused ~10 times, seglen reduced TTFT by 51.5% compared to lru.
+
+<div style="text-align:center;">
+    <img src="/imgs/blog/seglen/swebench_art10_ttft.png" width="50%" />
+</div>
 
 | Policy | Mean TTFT (ms) | Mean queue depth | Mean cache hit rate |
 |---|---:|---:|---:|
@@ -296,13 +300,13 @@ On swe-bench trace where each prefix is reused ~10 times, seglen reduced TTFT by
 
 *Results on `swebench_sps=10_art=10_nums=100.jsonl` dataset*
 
-<div style="text-align:center;">
-    <img src="/imgs/blog/seglen/swebench_art10_ttft.png" width="50%" />
-</div>
-
 #### ShareGPT
 
 On ShareGPT dataset, where prefix reuse is minimal, SegLen remains competitive and achieves a 0.12% reduction in TTFT compared to lru.
+
+<div style="text-align:center;">
+    <img src="/imgs/blog/seglen/share_gpt_ttft.png" width="50%" />
+</div>
 
 | Policy | Mean TTFT (ms) | Mean queue depth | Mean cache hit rate |
 |---|---:|---:|---:|
@@ -313,15 +317,15 @@ On ShareGPT dataset, where prefix reuse is minimal, SegLen remains competitive a
 
 *Results on `ShareGPT_V3_unfiltered_cleaned_split.json` dataset*
 
-<div style="text-align:center;">
-    <img src="/imgs/blog/seglen/share_gpt_ttft.png" width="50%" />
-</div>
-
 These results show that when prefix reuse is present, SegLen delivers significant performance gains. When reuse is low, it still remains competitive.
 
 ### Across Memory Budgets
 
 Next, we vary available cache memory to understand how policies behave under different levels of memory pressure. 
+
+<div style="text-align:center;">
+    <img src="/imgs/blog/seglen/ttft_vs_memory_fraction.png" width="70%" />
+</div>
 
 | Mem fraction static | Policy | Mean TTFT (ms) | Mean queue depth | Mean cache hit rate |
 |---|---|---:|---:|---:|
@@ -339,10 +343,6 @@ Next, we vary available cache memory to understand how policies behave under dif
 | 0.5 | marconi-v2 | 9547.27 | 44.6585 | 0.2347 |
 
 *Results on `swebench_sps=10_art=5_nums=100.jsonl` dataset*
-
-<div style="text-align:center;">
-    <img src="/imgs/blog/seglen/ttft_vs_memory_fraction.png" width="70%" />
-</div>
 
 The trend is clear: as memory pressure increases, the advantage of `seglen` becomes more pronounced. This matches the intuition behind SegLen: when memory is tight, eviction decisions matter more, and better approximations of recomputation cost lead to larger gains.
 

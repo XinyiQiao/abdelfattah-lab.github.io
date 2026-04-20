@@ -213,19 +213,19 @@ To make eviction decisions, `seglen` combines replay distance with recency — s
 Here's a simple example showing how different eviction policies behave:
 
 <div style="text-align:center;">
-    <img src="/imgs/blog/seglen/cacheeviction.png" width="50%" />
+    <img src="/imgs/blog/seglen/seglenexample.png" width="50%" />
 </div>
 
 | Eviction policy | Ranking (best → worst to keep) | Eviction pick |
 |---|---|---|
-| LRU | B (mru) → C → D → A (lru) | A |
-| Marconi | A (efficiency=0.12) → B (efficiency=0.31) → D (efficiency=0.45) → C (efficiency=0.67) | C |
-| SegLen | A (seglen=1) → B (seglen=3) → C (seglen=4) → D (seglen=4+2=6) | D |
+| LRU | E (mru) -> C -> B -> A (lru) | A |
+| Marconi | C (efficiency=0.35) -> A (efficiency=0.32) -> B (efficiency=0.22) -> E (efficiency=0.15) | E |
+| SegLen | E (seglen=3) -> C (seglen=3) -> A (seglen=3) -> B (seglen=2) | B |
 
 When eviction is needed
 - LRU picks A — the least recently used node
-- Marconi picks C — its 4-token segment yields the highest FLOP efficiency score
-- SegLen picks D — its replay distance is the longest (4 tokens through tombstoned C + 2 of its own = 6). 
+- Marconi picks E  — its 1-token segment yields the lowest utility score
+- SegLen picks B — its replay distance combined with recency is the smallest
 
 The implementation of SegLen can be found [here](https://github.com/sgl-project/sglang/pull/22172).
 

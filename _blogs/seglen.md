@@ -24,16 +24,20 @@ Prefix caching has therefore become a core optimization in serving systems like 
 
 For attention-based models, this works really well. KV cache is stored per token, so systems can reuse partial prefixes. Even if two requests only overlap halfway, you still get meaningful savings.
 
-But Hybrid models make this much less straightforward. Modern model architectures are increasingly hybrid - they mix attention layers with recurrent components (like state space models) to reduce compute and memory cost.
+But Hybrid models complicates prefix reuse. Modern model architectures are increasingly hybrid - they mix attention layers with recurrent components (like state space models) to reduce compute and memory cost.
 
  <div style="text-align:center;">
     <img src="/imgs/blog/seglen/hybridmodel.png" width="40%" />
   </div>  
+  
+*Transformer vs Hybrid model architecture.*
 
 | Property | Attention | SSM |
 | --- | --- | --- |
 | Computational Complexity | $O(L^2)$ | $O(L)$ |
 | Inference-Time Memory | $O(L)$ | $O(1)$ |
+
+*Complexity comparison between Attention and SSM layers*
 
 These recurrent states behave very differently from KV caches. Instead of storing information per token, they compress the entire prefix into a single fixed-size state and update it in place, which means you can't partially reuse a prefix. 
 
@@ -41,9 +45,9 @@ So the question now becomes:
 
 > **How should prefix caching work for hybrid models?**
 
-In this work, we take the FLOP-aware cache eviction idea from Marconi—a recent approach for hybrid model prefix caching—and try to bring it into a real serving system SGLang. In doing so, we identified several practical considerations, leading us to propose a simpler heuristic approach: SegLen.
+In this work, we start from the FLOP-aware cache eviction idea from Marconi—a recent approach for hybrid model prefix caching—and try to bring it into a real serving system SGLang. In doing so, we identified several practical considerations, leading us to propose a simpler heuristic approach: SegLen.
 
-SegLen is a lightweight, model-agnostic heuristic that captures the core intuition behind Marconi, while being much easier to integrate into a real serving engine. We implement SegLen in SGLang and evaluate it across a range of workloads and cache settings. Our results show that SegLen delivers strong performance while significantly simplifying system integration.
+SegLen is a lightweight, model-agnostic heuristic that captures the core intuition behind Marconi - but in a much simpler form that’s easier to bring into a real serving system. We implement SegLen in SGLang and evaluate it across a range of workloads and memory settings. Our results show that SegLen delivers strong performance while keeping the system much simpler.
 
 ## Problem
 
@@ -151,6 +155,7 @@ For hybrid models, SGLang extends this structure to manage both KV cache and rec
 Under the hood, memory is split into two separate pools:
 - KV cache pool (attention)
 - Mamba pool (recurrent state)
+  
 Each pool has its own allocation and eviction logic.
 
 <div style="text-align:center;">
@@ -165,6 +170,8 @@ Another practical aspect is that Mamba pool is usually much more resource constr
 |---|---:|---:|
 | Mamba | 424 | 20.39 GB |
 | KV | 740752 | 22.60 GB |
+
+*SGLang cache capacity breakdown (Qwen3.6-9B, 1xH100)*
 
 ### 4.3 Cache Eviction Behavior
 SGLang also treats KV cache and recurrent state very differently during eviction.

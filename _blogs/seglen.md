@@ -75,9 +75,12 @@ Recurrent state (SSM / Mamba):
 
 *KV Cache vs recurrent state*
 
-Because recurrent states are updated in place, you can’t roll them back to represent earlier prefixes.
+Because recurrent states are updated in place, you can’t roll them back to represent earlier prefixes. 
+
+These differences fundamentally change how prefix reuse works.
 
 ### 2.2 Core Problem: All-or-Nothing Reuse
+
 With KV cache, you can reuse any partial prefix. 
 
 With recurrent state, reuse becomes **all-or-nothing**.

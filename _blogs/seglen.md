@@ -180,7 +180,7 @@ Another practical aspect is that Mamba pool is usually much more resource constr
 | Mamba | 424 | 20.39 GB |
 | KV | 740752 | 22.60 GB |
 
-*SGLang cache capacity breakdown (Qwen3.6-9B, 1xH100)*
+*SGLang cache capacity breakdown (Qwen3.5-9B, 1xH100)*
 
 ### 4.3 Cache Eviction Behavior
 SGLang also treats KV cache and recurrent state very differently during eviction.
@@ -218,7 +218,7 @@ Accurately computing FLOPs requires architecture-specific logic. In practice, hy
 
 ## 5. SegLen: A Simpler Heuristic
 
-The core idea from Marconi is simple: states that represent longer prefixes are more valuable to keep. So instead of computing FLOPS exactly, we looked for a simpler signal that captures the core idea. 
+The core idea from Marconi is simple: states that represent longer prefixes tend to save more FLOPs per memory byte. So instead of computing FLOPS exactly, we looked for a simpler signal that captures the core idea. 
 
 We proposed a heuristic `seglen` that uses the replay distance to the nearest parent node that still has a valid recurrent state as a heuristic approximation to Marconi's FLOPs-efficiency score. 
 

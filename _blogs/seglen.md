@@ -256,20 +256,11 @@ Our goal is to understand how different cache policies behave under different wo
 ### 6.2 Across Workloads
 
 We evaluate across two types of workloads:
-  
-<!-- - prefix-heavy dataset: synthetic workload mixing various prefix groups with random noise (multi_group_shared_prefix_dataset.json) -->
+
 - SWE-bench traces: realistic workloads with meaningful prefix reuse
 - ShareGPT with low prefix reuse: a regression check in the low-reuse regime
 
 Across these workloads, SegLen consistently reduces mean TTFT compared to LRU, achieving over 50% reduction on SWE-bench traces, while remaining competitive in low-reuse settings.
-
-<!-- ### mixed output
-| Policy | Mean TTFT (ms) | Mean queue depth | Mean cache hit rate |
-|---|---:|---:|---:|
-| lru | 2274.69 | 19.0400 | 0.6529 |
-| seglen | 2233.17 | 18.8548 | 0.6538 |
-| marconi | 2325.26 | 20.9328 | 0.6548 |
-| marconi-v2 | 2901.55 | 28.3761 | 0.6685 | -->
 
 #### SWE-Bench
 On swe-bench traces where each prefix is reused ~5 times on average, seglen reduced TTFT by 51.3% compared to lru, while also improving cache hit rate and reducing queue depth.
@@ -283,7 +274,6 @@ On swe-bench traces where each prefix is reused ~5 times on average, seglen redu
 | lru | 2107.68 | 10.3686 | 0.3261 |
 | seglen | 1027.35 | 4.8386 | 0.4179 |
 | marconi | 1178.64 | 5.6679 | 0.4065 |
-| marconi-v2 | 1521.77 | 7.7896 | 0.4182 |
 
 *Results on `swebench_sps=10_art=5_nums=100.jsonl` dataset*
 
@@ -298,7 +288,6 @@ On swe-bench trace where each prefix is reused ~10 times, seglen reduced TTFT by
 | lru | 2273.05 | 11.2514 | 0.2994 |
 | seglen | 1101.67 | 5.9165 | 0.4353 |
 | marconi | 1335.84 | 7.2620 | 0.4242 |
-| marconi-v2 | 1883.44 | 10.4380 | 0.4214 |
 
 *Results on `swebench_sps=10_art=10_nums=100.jsonl` dataset*
 
@@ -315,7 +304,6 @@ On ShareGPT dataset, where prefix reuse is minimal, SegLen remains competitive a
 | lru | 72.48 | 0.0004 | 0.0022 |
 | seglen | 72.39 | 0.0000 | 0.0049 |
 | marconi | 75.29 | 0.0004 | 0.0049 |
-| marconi-v2 | 113.57 | 0.0013 | 0.0051 |
 
 *Results on `ShareGPT_V3_unfiltered_cleaned_split.json` dataset*
 
@@ -334,15 +322,12 @@ Next, we vary available cache memory to understand how policies behave under dif
 | 0.77 | lru | 1697.04 | 8.4729 | 0.3317 |
 | 0.77 | seglen | 934.93 | 4.6355 | 0.4226 |
 | 0.77 | marconi | 1110.74 | 5.4124 | 0.4088 |
-| 0.77 | marconi-v2 | 1499.00 | 8.0385 | 0.4218 |
 | 0.7 | lru | 2809.16 | 14.3618 | 0.2912 |
 | 0.7 | seglen | 1704.70 | 9.0218 | 0.3775 |
 | 0.7 | marconi | 1992.97 | 10.1597 | 0.3835 |
-| 0.7 | marconi-v2 | 2155.35 | 11.3566 | 0.3858 |
 | 0.5 | lru | 13283.69 | 58.0286 | 0.1290 |
 | 0.5 | seglen | 9706.63 | 44.9238 | 0.2249 |
 | 0.5 | marconi | 10194.86 | 46.8752 | 0.2238 |
-| 0.5 | marconi-v2 | 9547.27 | 44.6585 | 0.2347 |
 
 *Results on `swebench_sps=10_art=5_nums=100.jsonl` dataset*
 

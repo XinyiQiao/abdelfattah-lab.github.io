@@ -358,6 +358,10 @@ Across our experiments, SegLen achieves over 50% reduction in TTFT on real workl
 
 In the end, SegLen shows that a simple heuristic is enough to capture the right signal and works well in a real serving system.
 
+# References
+
+[1] Rui Pan, Zhuang Wang, Zhen Jia, Can Karakus, Luca Zancato, Tri Dao, Yida Wang, and Ravi Netravali. [Marconi: Prefix Caching for the Era of Hybrid LLMs](https://arxiv.org/abs/2411.19379). 2024.
+
 # Citing
 ```bibtex
 @misc{abdelfattah2026seglen,

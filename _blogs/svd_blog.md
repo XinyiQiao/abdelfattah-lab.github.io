@@ -29,11 +29,9 @@ Large Language Models are increasingly deployed at long context lengths — hund
 
 **SVD-based compression** addresses this directly. KV-Cache matrices empirically exhibit rapid singular value decay: most information concentrates in a small number of dominant directions. Truncating to the top-$k$ singular components yields the best possible rank-$k$ approximation, guaranteed optimal by the Eckart-Young theorem.
 
-**xKV** pushes this further by noting that adjacent transformer layers share nearly identical dominant subspaces. A single shared SVD over a group of $G$ concatenated KV-Caches achieves up to 6.8× higher compression than per-layer methods.
-
 **xKV** [Chang et al., 2025] pushes this further by observing that the dominant singular vectors of KV-Caches are well-aligned *across* adjacent layers. Concatenating the KV-Caches of $G$ adjacent layers and applying one shared SVD extracts a common low-rank subspace for all layers jointly — achieving up to **6.8× higher compression** than prior inter-layer methods while improving accuracy.
 
-The catch: unlike offline weight compression, xKV must compute SVD **online** during the prefill phase of every request, since the KV-Cache is input-dependent. This online SVD step becomes a significant and growing fraction of prefill latency. Even the standard approximate `torch.svd_lowrank` (Halko et al. [2011]) accounts for **13.0%** of total per-sample profiling time (see [Fig. 1](#end-to-end-svd-latency)) — a measurable throughput bottleneck with two clear inefficiencies..
+The catch: unlike offline weight compression, xKV must compute SVD **online** during the prefill phase of every request, since the KV-Cache is input-dependent. This online SVD step becomes a significant and growing fraction of prefill latency. Even the standard approximate `torch.svd_lowrank` (Halko et al. [2011]) accounts for **13.0%** of total per-sample profiling time (see [Fig. 1](#end-to-end-svd-latency)) — a measurable throughput bottleneck with two clear inefficiencies.
 
 ## Contributions
 
@@ -53,15 +51,15 @@ We follow the same four-stage structure as `torch.svd_lowrank` with two targeted
 
 ## Singular Value Decomposition
 
-For any real matrix $A \in \mathbb{R}^{m \times n}$, the **Singular Value Decomposition** (SVD) is [Lee, IBM]:
+For any real matrix $X \in \mathbb{R}^{m \times n}$, the **Singular Value Decomposition** (SVD) is [Lee, IBM]:
 
-$$A = U \Sigma V^\top$$
+$$X = U \Sigma V^\top$$
 
 where $U \in \mathbb{R}^{m \times m}$ and $V \in \mathbb{R}^{n \times n}$ are orthogonal matrices, and $\Sigma \in \mathbb{R}^{m \times n}$ is diagonal with non-negative entries $\sigma_1 \geq \sigma_2 \geq \cdots \geq \sigma_r \geq 0$, $r = \min(m, n)$.
 
-Truncating to the top-$k$ components gives the **rank-$k$ approximation** $A_k = U_k \Sigma_k V_k^\top$. The **Eckart-Young theorem** guarantees it is optimal:
+Truncating to the top-$k$ components gives the **rank-$k$ approximation** $X_k = U_k \Sigma_k V_k^\top$. The **Eckart-Young theorem** guarantees it is optimal:
 
-$$\|A - A_k\|_F = \min_{\text{rank}(B) \leq k} \|A - B\|_F = \sqrt{\sigma_{k+1}^2 + \sigma_{k+2}^2 + \cdots}$$
+$$\|X - X_k\|_F = \min_{\text{rank}(B) \leq k} \|X - B\|_F = \sqrt{\sigma_{k+1}^2 + \sigma_{k+2}^2 + \cdots}$$
 
 No other rank-$k$ matrix achieves smaller error — this is the theoretical foundation for SVD-based compression throughout machine learning.
 
@@ -73,7 +71,7 @@ Real-world matrices in deep learning exhibit **rapid spectral decay**: $\sigma_1
 
 * Sequence length at prefill: $L$; per-head hidden dimension: $d$; number of layers grouped: $G$.
 * KV-Cache for layer $\ell$: $X_\ell \in \mathbb{R}^{L \times d}$.
-* **xKV concatenated cache:** $\bigl[X_{\ell_1}, \ldots, X_{\ell_G}\bigr] \in \mathbb{R}^{L \times (Gd)}$ — the matrix $A$ that our SVD operates on.
+* **xKV concatenated cache:** $\bigl[X_{\ell_1}, \ldots, X_{\ell_G}\bigr] \in \mathbb{R}^{L \times (Gd)}$ — the matrix $X$ that our SVD operates on.
 * Target rank: $k$; oversampling: $p$; power iteration steps: $n_\text{iter}$.
 
 ---

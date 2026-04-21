@@ -356,4 +356,14 @@ Marconi provides a key insight: cache eviction should be guided by recomputation
 
 Across our experiments, SegLen achieves over 50% reduction in TTFT on real workloads, remains competitive in low-reuse settings, and shows even larger gains under memory pressure.
 
-In the end, SegLen shows that a simple heuristic is enough to capture the right signal and works well in a real serving system. 
+In the end, SegLen shows that a simple heuristic is enough to capture the right signal and works well in a real serving system.
+
+# Citing
+```bibtex
+@misc{abdelfattah2026seglen,
+      title={Rethinking Prefix Caching for Hybrid LLMs}, 
+      author={Isabella and Chi-Chih Chang and Mohamed Abdelfattah},
+      year={2026},
+      url={https://abdelfattah-lab.github.io/blog/seglen}, 
+}
+``` 

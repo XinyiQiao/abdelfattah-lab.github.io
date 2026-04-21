@@ -53,6 +53,15 @@ yassine:
   alumni: true
   next: PhD at U of Copenhagen
 
+yahya:
+  name: Yahya Emara
+  url: https://yahya010.github.io/
+  title: PhD Student
+
+nate:
+  name: Nate Young
+  url: http://natetyoung.github.io/
+  title: PhD Student
 
 # undergrads / MEng
 
@@ -98,7 +107,7 @@ rebecca:
 anthony:
   name: Anthony Fei
   url: https://www.linkedin.com/in/anthony-fei-11947127b/
-  title: Undergrad Researcher
+  title: PhD Student
 
 buqing:
   name: Buqing Xu
@@ -165,10 +174,6 @@ ussama:
 
   # collaborators
 
-nilesh:
-  name: Nilesh Jain
-  collab: true
-  affiliation: Intel
 gene:
   name: Gene Chou
   collab: true
@@ -325,10 +330,6 @@ yang:
   name: Yang Wang
   collab: true
   affiliation: Microsoft
-george1:
-  name: George A. Constantinides
-  collab: true
-  affiliation: Imperial
 yueying:
   name: Yueying Li
   collab: true
@@ -473,10 +474,6 @@ vaughn:
   name: Vaughn Betz
   collab: true
   affiliation: Toronto
-yahya:
-  name: Yahya Emara
-  collab: true
-  affiliation: ETH Zürich
 jianja:
   name: Jian-Jia Chen
   collab: true
@@ -533,3 +530,23 @@ yuchen:
   name: Yu-chen Luis
   collab: true
   affiliation: NYCU
+thierry:
+  name: Thierry Tambe
+  collab: true
+  affiliation: Stanford
+yuheng:
+  name: Yuheng Wu
+  collab: true
+  affiliation: Stanford
+wonsuk:
+  name: Wonsuk Jang
+  collab: true
+  affiliation: Stanford
+marian:
+  name: Marian Verhelst
+  collab: true
+  affiliation: KU Leuven
+chao:
+  name: Chao Fang
+  collab: true
+  affiliation: KU Leuven

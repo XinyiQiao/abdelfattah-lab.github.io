@@ -6,7 +6,7 @@ authors:
   - key: xilai
   - key: yang
   - key: marta
-  - key: george1
+  - key: george
   - key: mohamed
 venue: hpca
 year: 2025

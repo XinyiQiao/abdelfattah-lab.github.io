@@ -1,7 +1,7 @@
 ---
 title: "Hardware Efficient Randomized SVD"
 authors:
-  - key: zhihao
+  - key: sean
   - key: chichih
   - key: mohamed
 tags:

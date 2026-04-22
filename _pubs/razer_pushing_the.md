@@ -12,7 +12,7 @@ authors:
   - key: mohamed
 venue: preprint
 year: 2026
-date: 2026-03-01
+date: 2026-06-30
 teaser: ''
 tags:
   - machine learning

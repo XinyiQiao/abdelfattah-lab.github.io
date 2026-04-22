@@ -550,3 +550,19 @@ chao:
   name: Chao Fang
   collab: true
   affiliation: KU Leuven
+ryan:
+  name: Ryan Cotterell
+  collab: true
+  affiliation: ETH Zurich
+tim:
+  name: Tim Vieira
+  collab: true
+  affiliation: ETH Zurich
+mau:
+  name: Mauricio Barba da Costa
+  collab: true
+  affiliation: MIT
+cameron:
+  name: Cameron Freer
+  collab: true
+  affiliation: MIT
